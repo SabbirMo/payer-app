@@ -17,13 +17,13 @@ void callbackDispatcher() {
       final String title = inputData?['title'] ?? 'Prayer Time';
       final String body = inputData?['body'] ?? 'It is time for prayer';
 
-      print('Workmanager: Showing notification $id');
+      print('Workmanager: Showing notification $id with title "$title"');
       await NotificationService.showImmediateNotification(
         id: id,
         title: title,
         body: body,
       );
-      print('Workmanager: Notification shown successfully');
+      print('Workmanager: Notification shown successfully for $id');
       
       return Future.value(true);
     } catch (e) {
@@ -38,6 +38,7 @@ class WorkmanagerService {
   static Future<void> initialize() async {
     await Workmanager().initialize(
       callbackDispatcher,
+      isInDebugMode: false,
     );
   }
 
@@ -73,6 +74,28 @@ class WorkmanagerService {
         'body': body,
       },
       existingWorkPolicy: ExistingWorkPolicy.replace,
+    );
+  }
+
+  static Future<void> schedulePeriodicTask({
+    required String uniqueName,
+    required String taskName,
+    required int id,
+    required String title,
+    required String body,
+    required Duration frequency,
+  }) async {
+    await Workmanager().registerPeriodicTask(
+      uniqueName,
+      taskName,
+      frequency: frequency,
+      initialDelay: frequency,
+      inputData: {
+        'id': id,
+        'title': title,
+        'body': body,
+      },
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
     );
   }
 

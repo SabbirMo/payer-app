@@ -3,19 +3,37 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
-import 'services/workmanager_service.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.initialize();
-  await NotificationService.requestPermissions();
-  await WorkmanagerService.initialize();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
-  runApp(const GlobalDevoApp());
+  print('App is starting...');
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    debugPrint('main: Flutter binding initialized.');
+    
+    await NotificationService.initialize();
+    debugPrint('main: NotificationService initialized.');
+    
+    await NotificationService.requestPermissions();
+    debugPrint('main: Permissions requested.');
+    
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
+    
+    runApp(const GlobalDevoApp());
+    debugPrint('main: runApp called.');
+  } catch (e, stack) {
+    debugPrint('FATAL ERROR DURING STARTUP: $e');
+    debugPrint('STACK TRACE: $stack');
+    // Start the app anyway if possible to avoid perpetual white screen
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('App Initialization Failed: $e\nPlease restart.')),
+      ),
+    ));
+  }
 }
 
 class GlobalDevoApp extends StatelessWidget {

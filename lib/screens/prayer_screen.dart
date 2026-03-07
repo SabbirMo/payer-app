@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../services/notification_service.dart';
-import '../services/workmanager_service.dart';
 import '../data/bible_data.dart';
 
 class PrayerScreen extends StatefulWidget {
@@ -101,19 +100,15 @@ class _PrayerScreenState extends State<PrayerScreen>
         continue;
       }
       final notificationId = idValue as int;
-      final uniqueName = 'prayer_$notificationId';
-
       if (reminder['enabled'] == true) {
         final targetTime = _parseTime(reminder['time']);
-        WorkmanagerService.schedulePrayerTask(
-          uniqueName: uniqueName,
+        NotificationService.scheduleNotification(
           id: notificationId,
           title: reminder['label'] ?? 'Prayer Time',
           body: 'It is time for your ${reminder['label']}',
-          targetTime: targetTime,
+          scheduledDate: targetTime,
         );
       } else {
-        WorkmanagerService.cancelTask(uniqueName);
         NotificationService.cancelNotification(notificationId);
       }
     }
@@ -284,6 +279,11 @@ class _PrayerScreenState extends State<PrayerScreen>
                   ),
                 ),
               ),
+              IconButton(
+                onPressed: () => NotificationService.testNotification(),
+                icon: const Icon(Icons.bug_report_rounded, color: Color(0xFFD4A017)),
+                tooltip: 'Test Alarms',
+              ),
             ],
           ),
         ),
@@ -410,7 +410,6 @@ class _PrayerScreenState extends State<PrayerScreen>
                           onPressed: () {
                             // Cancel associated tasks before deleting
                             final reminderId = _reminders[index]['id'] as int;
-                            WorkmanagerService.cancelTask('prayer_$reminderId');
                             NotificationService.cancelNotification(reminderId);
 
                             setState(() {

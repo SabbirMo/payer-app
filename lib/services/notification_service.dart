@@ -1,64 +1,89 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
+import 'package:timezone/data/latest_all.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
-    debugPrint('NotificationService: Initializing...');
+    try {
+      tz_data.initializeTimeZones();
+      final dynamic timeZone = await FlutterTimezone.getLocalTimezone();
+      final String timeZoneName =
+          timeZone is String ? timeZone : (timeZone as dynamic).identifier;
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
+
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_icon');
 
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestSoundPermission: false, // Don't request here, do it in requestPermissions
-      requestBadgePermission: false,
-      requestAlertPermission: false,
-    );
-
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
+      iOS: DarwinInitializationSettings(),
     );
 
     try {
       await _notificationsPlugin.initialize(
         settings: initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) async {
-          // Handle notification tap
-        },
+        onDidReceiveNotificationResponse: (details) {},
       );
-      debugPrint('NotificationService: Plugin initialized.');
+
+      final androidPlugin =
+          _notificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      if (androidPlugin != null) {
+        // Simple channel with default sound for max reliability
+        const AndroidNotificationChannel channel = AndroidNotificationChannel(
+          'prayer_alarm_v5', // New channel for sound change
+          'Prayer Alarms',
+          description: 'Daily prayer reminders using system alarm sound',
+          importance: Importance.max,
+          playSound: true,
+          sound: UriAndroidNotificationSound(
+              'content://settings/system/alarm_alert'),
+          enableVibration: true,
+        );
+        await androidPlugin.createNotificationChannel(channel);
+      }
     } catch (e) {
-      debugPrint('NotificationService: Failed to initialize: $e');
+      throw Exception('Failed to initialize notifications: $e');
     }
   }
 
   static Future<void> requestPermissions() async {
     debugPrint('NotificationService: Requesting permissions...');
     // For Android 13+ (API 33+)
-    final androidImplementation = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
+    final androidImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidImplementation != null) {
-      await androidImplementation.requestNotificationsPermission();
-      // Also request exact alarm permission if needed
-      await androidImplementation.requestExactAlarmsPermission();
-      debugPrint('NotificationService: Permissions requested on Android.');
+      final bool? hasNotificationPermission =
+          await androidImplementation.requestNotificationsPermission();
+      final bool? hasExactAlarmPermission =
+          await androidImplementation.requestExactAlarmsPermission();
+      debugPrint(
+          'NotificationService: Android Permissions - Notifications: $hasNotificationPermission, Exact Alarm: $hasExactAlarmPermission');
     }
-    
-    final iosImplementation = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
+
+    final iosImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
     if (iosImplementation != null) {
-       await iosImplementation.requestPermissions(
+      final bool? granted = await iosImplementation.requestPermissions(
         alert: true,
         badge: true,
         sound: true,
       );
-      debugPrint('NotificationService: Permissions requested on iOS.');
+      debugPrint('NotificationService: iOS Permissions - Granted: $granted');
     }
   }
 
@@ -67,19 +92,22 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'prayer_reminders_user_alarm_channel', // New channel to respect user settings
-      'Prayer Reminders',
-      channelDescription: 'Notifications for daily prayer reminders',
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'prayer_alarm_v5',
+      'Prayer Alarms',
+      channelDescription: 'Daily prayer reminders using system alarm sound',
       importance: Importance.max,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-      playSound: true,
-      sound: const UriAndroidNotificationSound('content://settings/system/alarm_alert'),
-      additionalFlags: Int32List.fromList([4]), // 4 = FLAG_INSISTENT (sound repeats)
-      audioAttributesUsage: AudioAttributesUsage.alarm,
-      category: AndroidNotificationCategory.alarm,
+      priority: Priority.max,
+      visibility: NotificationVisibility.public,
+      icon: '@mipmap/launcher_icon',
       fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      playSound: true,
+      sound: const UriAndroidNotificationSound(
+          'content://settings/system/alarm_alert'),
+      additionalFlags: Int32List.fromList([4]), // FLAG_INSISTENT
     );
 
     final NotificationDetails platformDetails = NotificationDetails(
@@ -97,6 +125,89 @@ class NotificationService {
       body: body,
       notificationDetails: platformDetails,
     );
+  }
+
+  static Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'prayer_alarm_v5',
+      'Prayer Alarms',
+      channelDescription: 'Daily prayer reminders using system alarm sound',
+      importance: Importance.max,
+      priority: Priority.max,
+      visibility: NotificationVisibility.public,
+      icon: '@mipmap/launcher_icon',
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      playSound: true,
+      sound: const UriAndroidNotificationSound(
+          'content://settings/system/alarm_alert'),
+      additionalFlags: Int32List.fromList([4]), // FLAG_INSISTENT
+    );
+
+    final NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(
+        presentSound: true,
+        presentAlert: true,
+        presentBadge: true,
+      ),
+    );
+
+    // Schedule the notification
+    var scheduleTime = tz.TZDateTime.from(scheduledDate, tz.local);
+    if (scheduleTime.isBefore(tz.TZDateTime.now(tz.local))) {
+      scheduleTime = scheduleTime.add(const Duration(days: 1));
+    }
+
+    debugPrint(
+        'NotificationService: Scheduling ID $id at $scheduleTime (Local: ${tz.local.name})');
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduleTime,
+        notificationDetails: platformDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+      );
+      debugPrint('NotificationService: Successfully scheduled ID $id');
+    } catch (e) {
+      debugPrint('NotificationService: Error scheduling ID $id: $e');
+    }
+  }
+
+  // A helper to test if notifications are working at all
+  static Future<void> testNotification() async {
+    try {
+      // 1. Show immediate notification
+      await showImmediateNotification(
+        id: 888,
+        title: 'Immediate Test 🔔',
+        body: 'If you see this, basic notifications are working!',
+      );
+
+      // 2. Schedule for 5 seconds later
+      final now = tz.TZDateTime.now(tz.local);
+      final testTime = now.add(const Duration(seconds: 5));
+
+      await scheduleNotification(
+        id: 999,
+        title: 'Scheduled Test (5s) ⏰',
+        body: 'If you see this, exact alarms are working!',
+        scheduledDate: testTime,
+      );
+    } catch (e) {
+      throw Exception('Failed to test notifications: $e');
+    }
   }
 
   static Future<void> cancelNotification(int id) async {

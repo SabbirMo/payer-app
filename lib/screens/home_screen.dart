@@ -8,6 +8,8 @@ import 'songs_screen.dart';
 import 'wallpapers_screen.dart';
 import 'names_screen.dart';
 import 'donation_screen.dart';
+import 'water_reminder_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 
 class HomeScreen extends StatefulWidget {
@@ -34,6 +36,69 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _floatController =
         AnimationController(duration: const Duration(seconds: 3), vsync: this)
           ..repeat(reverse: true);
+    
+    // Check battery optimization after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkBatteryOptimization());
+  }
+
+  Future<void> _checkBatteryOptimization() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool hasShown = prefs.getBool('battery_reminded') ?? false;
+    
+    if (!hasShown && mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: BorderSide(color: const Color(0xFFD4A017).withOpacity(0.3))),
+          title: Row(
+            children: [
+              const Icon(Icons.battery_alert_rounded, color: Color(0xFFD4A017)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('IMPORTANT SETUP', 
+                  style: GoogleFonts.cinzel(color: const Color(0xFFD4A017), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('To ensure your Prayer Alarms work 100% on time, please follow these steps:',
+                style: GoogleFonts.cormorantGaramond(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 16),
+              _buildStep(1, 'Go to App Info > Battery'),
+              _buildStep(2, 'Change setting to "Unrestricted"'),
+              _buildStep(3, 'This prevents the system from delaying your alarms.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await prefs.setBool('battery_reminded', true);
+                Navigator.pop(context);
+              },
+              child: Text('GOT IT, I WILL SET IT', style: GoogleFonts.cinzel(color: const Color(0xFFD4A017), fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildStep(int num, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$num. ', style: const TextStyle(color: Color(0xFFD4A017), fontWeight: FontWeight.bold)),
+          Expanded(child: Text(text, style: GoogleFonts.cormorantGaramond(color: Colors.white70, fontSize: 14))),
+        ],
+      ),
+    );
   }
 
   @override
@@ -294,6 +359,12 @@ class _HomeTabState extends State<_HomeTab> with TickerProviderStateMixin {
         'label': 'Wallpapers',
         'color': const Color(0xFF4CAF50),
         'screen': const WallpapersScreen()
+      },
+      {
+        'icon': Icons.water_drop_rounded,
+        'label': 'Water Reminder',
+        'color': const Color(0xFF4AC3FF),
+        'screen': const WaterReminderScreen()
       },
     ];
     return GridView.builder(
