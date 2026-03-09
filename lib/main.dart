@@ -11,12 +11,21 @@ void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
     debugPrint('main: Flutter binding initialized.');
-    
+
     await NotificationService.initialize();
     debugPrint('main: NotificationService initialized.');
-    
+
     await NotificationService.requestPermissions();
     debugPrint('main: Permissions requested.');
+
+    // Check if exact alarms can be scheduled
+    final canScheduleExact = await NotificationService.canScheduleExactAlarms();
+    if (!canScheduleExact) {
+      debugPrint(
+          'main: WARNING - Exact alarm permission not granted! Alarms may be delayed.');
+    } else {
+      debugPrint('main: Exact alarm permission granted.');
+    }
 
     // Reschedule all alarms on every startup
     // This fixes the issue where MIUI/OEMs cancel AlarmManager entries on app kill
@@ -38,13 +47,13 @@ void main() async {
     } catch (e) {
       debugPrint('main: Could not request battery optimization: $e');
     }
-    
+
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
     ));
-    
+
     runApp(const GlobalDevoApp());
     debugPrint('main: runApp called.');
   } catch (e, stack) {
@@ -53,7 +62,8 @@ void main() async {
     // Start the app anyway if possible to avoid perpetual white screen
     runApp(MaterialApp(
       home: Scaffold(
-        body: Center(child: Text('App Initialization Failed: $e\nPlease restart.')),
+        body: Center(
+            child: Text('App Initialization Failed: $e\nPlease restart.')),
       ),
     ));
   }

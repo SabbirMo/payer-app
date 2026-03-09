@@ -31,7 +31,7 @@ class _PrayerScreenState extends State<PrayerScreen>
   Future<void> _loadReminders() async {
     final prefs = await SharedPreferences.getInstance();
     final String? remindersJson = prefs.getString('reminders');
-    
+
     if (remindersJson != null) {
       _reminders = List<Map<String, dynamic>>.from(jsonDecode(remindersJson));
     } else {
@@ -96,7 +96,8 @@ class _PrayerScreenState extends State<PrayerScreen>
       final reminder = _reminders[i];
       final idValue = reminder['id'];
       if (idValue == null) {
-        debugPrint('PrayerScreen: Skipping sync for reminder at index $i (null ID)');
+        debugPrint(
+            'PrayerScreen: Skipping sync for reminder at index $i (null ID)');
         continue;
       }
       final notificationId = idValue as int;
@@ -117,7 +118,7 @@ class _PrayerScreenState extends State<PrayerScreen>
   DateTime _parseTime(String? timeStr) {
     final now = DateTime.now();
     if (timeStr == null || timeStr.isEmpty) return now;
-    
+
     try {
       DateTime targetTime;
       if (timeStr.contains('AM') || timeStr.contains('PM')) {
@@ -281,7 +282,8 @@ class _PrayerScreenState extends State<PrayerScreen>
               ),
               IconButton(
                 onPressed: () => NotificationService.testNotification(),
-                icon: const Icon(Icons.bug_report_rounded, color: Color(0xFFD4A017)),
+                icon: const Icon(Icons.bug_report_rounded,
+                    color: Color(0xFFD4A017)),
                 tooltip: 'Test Alarms',
               ),
             ],
@@ -344,7 +346,8 @@ class _PrayerScreenState extends State<PrayerScreen>
                       _saveReminders();
                     },
                     activeThumbColor: const Color(0xFFD4A017),
-                    activeTrackColor: const Color(0xFFD4A017).withValues(alpha: 0.3),
+                    activeTrackColor:
+                        const Color(0xFFD4A017).withValues(alpha: 0.3),
                     inactiveThumbColor: Colors.white30,
                     inactiveTrackColor: Colors.white10,
                   ),
@@ -359,14 +362,15 @@ class _PrayerScreenState extends State<PrayerScreen>
   }
 
   void _showReminderDialog([int? index]) {
-    final bool isEditing = index != null && index >= 0 && index < _reminders.length;
+    final bool isEditing =
+        index != null && index >= 0 && index < _reminders.length;
     final reminder = isEditing ? _reminders[index] : null;
 
     TimeOfDay selectedTime = isEditing
         ? TimeOfDay.fromDateTime(_parseTime(reminder?['time']))
         : const TimeOfDay(hour: 9, minute: 0);
-    final labelController =
-        TextEditingController(text: isEditing ? (reminder?['label'] as String? ?? '') : '');
+    final labelController = TextEditingController(
+        text: isEditing ? (reminder?['label'] as String? ?? '') : '');
 
     showModalBottomSheet(
       context: context,
@@ -436,7 +440,8 @@ class _PrayerScreenState extends State<PrayerScreen>
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         border: Border.all(
-                            color: const Color(0xFFD4A017).withValues(alpha: 0.4)),
+                            color:
+                                const Color(0xFFD4A017).withValues(alpha: 0.4)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(

@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -42,7 +43,7 @@ class NotificationService {
       if (androidPlugin != null) {
         // Channel with maximum priority settings for alarm delivery
         final AndroidNotificationChannel channel = AndroidNotificationChannel(
-          'prayer_alarm_v5', // New channel for sound change
+          'prayer_alarm_v5', // Keep stable channel ID
           'Prayer Alarms',
           description: 'Daily prayer reminders using system alarm sound',
           importance: Importance.max,
@@ -105,7 +106,7 @@ class NotificationService {
       priority: Priority.max,
       visibility: NotificationVisibility.public,
       icon: '@mipmap/launcher_icon',
-      fullScreenIntent: true,
+      fullScreenIntent: false,
       category: AndroidNotificationCategory.alarm,
       audioAttributesUsage: AudioAttributesUsage.alarm,
       playSound: true,
@@ -159,7 +160,7 @@ class NotificationService {
       priority: Priority.max,
       visibility: NotificationVisibility.public,
       icon: '@mipmap/launcher_icon',
-      fullScreenIntent: true,
+      fullScreenIntent: false,
       category: AndroidNotificationCategory.alarm,
       audioAttributesUsage: AudioAttributesUsage.alarm,
       playSound: true,
@@ -241,5 +242,30 @@ class NotificationService {
 
   static Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id: id);
+  }
+
+  // Check if exact alarm permission is granted (Android 12+)
+  static Future<bool> canScheduleExactAlarms() async {
+    final androidImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidImplementation != null) {
+      final bool? canSchedule =
+          await androidImplementation.canScheduleExactNotifications();
+      debugPrint(
+          'NotificationService: Can schedule exact alarms: $canSchedule');
+      return canSchedule ?? false;
+    }
+    return false;
+  }
+
+  // Get all pending notifications
+  static Future<List<dynamic>> getPendingNotifications() async {
+    final List<dynamic> notifications =
+        await _notificationsPlugin.pendingNotificationRequests();
+    debugPrint(
+        'NotificationService: ${notifications.length} pending notifications');
+    return notifications;
   }
 }

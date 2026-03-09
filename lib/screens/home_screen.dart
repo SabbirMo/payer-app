@@ -49,9 +49,177 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         AnimationController(duration: const Duration(seconds: 3), vsync: this)
           ..repeat(reverse: true);
 
-    // Check battery optimization after the first frame
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _checkBatteryOptimization());
+    // Show battery permission dialog after UI loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showBatteryPermissionDialog();
+    });
+  }
+
+  // Simple battery permission dialog
+  Future<void> _showBatteryPermissionDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShown = prefs.getBool('battery_permission_shown') ?? false;
+
+    // Check if battery optimization is already granted
+    final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+
+    // Show dialog if not shown before OR if permission not granted
+    if (!hasShown || !batteryStatus.isGranted) {
+      if (!mounted) return;
+
+      await Future.delayed(const Duration(seconds: 1)); // Wait for UI
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: const Color(0xFFD4A017).withOpacity(0.3)),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.battery_charging_full,
+                  color: Color(0xFFD4A017), size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Alarm Setup',
+                  style: GoogleFonts.cinzel(
+                    color: const Color(0xFFD4A017),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'To ensure Prayer Alarms work at the exact time, you need to change these Battery Settings:',
+                style: GoogleFonts.cormorantGaramond(
+                  color: Colors.white,
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildPermissionStep('1', 'Battery → Select "Unrestricted"'),
+              const SizedBox(height: 8),
+              _buildPermissionStep(
+                  '2', 'Permissions → Allow "Alarms & reminders"'),
+              const SizedBox(height: 8),
+              _buildPermissionStep(
+                  '3', 'Enable Autostart permission (if available)'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle,
+                        color: Colors.green, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'After this setup, alarms will ring at exact time!',
+                        style: GoogleFonts.cormorantGaramond(
+                          color: Colors.green,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await prefs.setBool('battery_permission_shown', true);
+              },
+              child: Text(
+                'Later',
+                style: GoogleFonts.cinzel(color: Colors.white54),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                await prefs.setBool('battery_permission_shown', true);
+
+                // Request battery optimization first
+                await Permission.ignoreBatteryOptimizations.request();
+
+                // Then open app settings
+                await openAppSettings();
+              },
+              icon: const Icon(Icons.settings),
+              label: Text(
+                'Open Settings',
+                style: GoogleFonts.cinzel(fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD4A017),
+                foregroundColor: Colors.black,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildPermissionStep(String number, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: const Color(0xFFD4A017),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              number,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.cormorantGaramond(
+              color: Colors.white,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<String> _readDeviceManufacturer() async {
