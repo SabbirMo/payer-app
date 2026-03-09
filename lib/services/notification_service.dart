@@ -40,18 +40,22 @@ class NotificationService {
               AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidPlugin != null) {
-        // Simple channel with default sound for max reliability
-        const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        // Channel with maximum priority settings for alarm delivery
+        final AndroidNotificationChannel channel = AndroidNotificationChannel(
           'prayer_alarm_v5', // New channel for sound change
           'Prayer Alarms',
           description: 'Daily prayer reminders using system alarm sound',
           importance: Importance.max,
           playSound: true,
-          sound: UriAndroidNotificationSound(
+          sound: const UriAndroidNotificationSound(
               'content://settings/system/alarm_alert'),
           enableVibration: true,
+          vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+          enableLights: true,
+          showBadge: true,
         );
         await androidPlugin.createNotificationChannel(channel);
+        debugPrint('NotificationService: Notification channel created');
       }
     } catch (e) {
       throw Exception('Failed to initialize notifications: $e');
@@ -107,7 +111,20 @@ class NotificationService {
       playSound: true,
       sound: const UriAndroidNotificationSound(
           'content://settings/system/alarm_alert'),
-      additionalFlags: Int32List.fromList([4]), // FLAG_INSISTENT
+      additionalFlags: Int32List.fromList([
+        4, // FLAG_INSISTENT - keeps ringing until dismissed
+        268435456, // FLAG_SHOW_WHEN_LOCKED
+        2097152, // FLAG_TURN_SCREEN_ON
+      ]),
+      enableLights: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+      ticker: title, // Shows briefly in status bar
+      autoCancel: false, // Don't auto-dismiss
+      ongoing: false,
+      onlyAlertOnce: false, // Always alert
+      showWhen: true,
+      when: DateTime.now().millisecondsSinceEpoch,
     );
 
     final NotificationDetails platformDetails = NotificationDetails(
@@ -148,7 +165,19 @@ class NotificationService {
       playSound: true,
       sound: const UriAndroidNotificationSound(
           'content://settings/system/alarm_alert'),
-      additionalFlags: Int32List.fromList([4]), // FLAG_INSISTENT
+      additionalFlags: Int32List.fromList([
+        4, // FLAG_INSISTENT - keeps ringing until dismissed
+        268435456, // FLAG_SHOW_WHEN_LOCKED
+        2097152, // FLAG_TURN_SCREEN_ON
+      ]),
+      enableLights: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+      ticker: title, // Shows briefly in status bar
+      autoCancel: false, // Don't auto-dismiss
+      ongoing: false,
+      onlyAlertOnce: false, // Always alert
+      showWhen: true,
     );
 
     final NotificationDetails platformDetails = NotificationDetails(
@@ -177,7 +206,7 @@ class NotificationService {
         scheduledDate: scheduleTime,
         notificationDetails: platformDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+        matchDateTimeComponents: DateTimeComponents.time,
       );
       debugPrint('NotificationService: Successfully scheduled ID $id');
     } catch (e) {

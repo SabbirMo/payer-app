@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
+import 'services/reminder_startup_service.dart';
 
 void main() async {
   print('App is starting...');
@@ -15,6 +17,27 @@ void main() async {
     
     await NotificationService.requestPermissions();
     debugPrint('main: Permissions requested.');
+
+    // Reschedule all alarms on every startup
+    // This fixes the issue where MIUI/OEMs cancel AlarmManager entries on app kill
+    await ReminderStartupService.rescheduleAllReminders();
+    debugPrint('main: Reminders rescheduled on startup.');
+
+    // Auto-request battery optimization exemption
+    // This is the key fix for screen-off and app-killed alarm delivery
+    // It shows Android's built-in system dialog asking the user to allow
+    // this app to ignore battery optimization
+    try {
+      final status = await Permission.ignoreBatteryOptimizations.status;
+      if (!status.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+        debugPrint('main: Battery optimization exemption requested.');
+      } else {
+        debugPrint('main: Battery optimization already exempted.');
+      }
+    } catch (e) {
+      debugPrint('main: Could not request battery optimization: $e');
+    }
     
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
